@@ -1,14 +1,3 @@
-
-// read bazooka.json file at cwd
-
-// for each endpoint
-
-  // run browserify on the file
-
-  // push to endpoint
-
-// update version file
-
 const path = require('path');
 const fs = require('fs');
 const Bluebird = require('bluebird');

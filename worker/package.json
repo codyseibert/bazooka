@@ -22,6 +22,7 @@
     "node-uuid": "^1.4.8",
     "rabbit.js": "^0.4.4",
     "request": "^2.83.0",
+    "route-parser": "0.0.5",
     "usage": "^0.7.1"
   }
 }

@@ -10,7 +10,6 @@ var AWS = require('aws-sdk');
 var Bluebird = require('bluebird');
 var uuid = require('node-uuid');
 var cp = require('child_process');
-
 const ip = cp.execSync(`dig TXT +short o-o.myaddr.l.google.com @ns1.google.com | awk -F'"' '{ print $2}'`).toString().replace('\n', '');
 
 let conn;
@@ -156,10 +155,14 @@ app.all('/snippits/:id', async function(req, res){
       clearInterval(interval);
       runner.kill();
     }, TIME_LIMIT);
+
+    const params = JSON.parse(req.query._params);
+    delete req.query._params;
+
     
     const request = JSON.stringify({
       body: req.body,
-      params: req.params,
+      params: params,
       query: req.query
     }).replace(/"/g, '\\\"');
     console.log('request', request);

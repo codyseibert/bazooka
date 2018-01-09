@@ -19,6 +19,7 @@
     "express": "^4.16.2",
     "node-uuid": "^1.4.8",
     "rabbit.js": "^0.4.4",
-    "request": "^2.83.0"
+    "request": "^2.83.0",
+    "route-parser": "0.0.5"
   }
 }

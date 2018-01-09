@@ -9,6 +9,8 @@ var Bluebird = require('bluebird');
 var uuid = require('node-uuid');
 var request = Bluebird.promisify(require('request'));
 var querystring = require('querystring');
+var Route = require('route-parser');
+
 
 async function main() {
   const conn = await require('amqplib').connect(process.env.RABBIT || 'amqp://localhost');
@@ -78,12 +80,16 @@ async function main() {
         Body: snippit,
       })
 
-      console.log('storing', `${method.toUpperCase()}@${key}/${name.replace(/^\/+/g, '')}`);
-      await docClient.putAsync({
+      await docClient.updateAsync({
         TableName: 'snippits',
-        Item: {
-          id: id,
-          name: `${method.toUpperCase()}@${key}/${name.replace(/^\/+/g, '')}`
+        Key: {
+          key: key
+        },
+        AttributeUpdates: {
+          [`${method.toUpperCase()}@${name.replace(/^\/+/g, '')}`]: {
+            Action: 'PUT',
+            Value: id
+          }
         }
       });
 
@@ -96,14 +102,52 @@ async function main() {
   function memo(fn) {
     const memo = {};
     return function(input) {
-      // temp hach
+      // temp hack until activemq clear cache implemented
       return fn(input)
-      
+
       if (!memo[input]) {
         memo[input] = fn(input) 
       } 
       return memo[input];
     }
+  }
+
+  const getRoutes = memo(async function(key) {
+    const record = await docClient.getAsync({
+      TableName: 'snippits',
+      Key: {
+        key: key
+      }
+    });
+    return Object.keys(record.Item)
+      .filter(key => key.indexOf('@') !== -1)
+      .map(key => ({
+        route: key.split('@')[1],
+        method: key.split('@')[0],
+        id: record.Item[key]
+      }))
+      .sort((a, b) => {
+        const ia = a.route.indexOf(':');
+        const ib = b.route.indexOf(':');
+        if (ia === ib) {
+          return 0
+        } else if (ia !== -1) {
+          return 1;
+        } else {
+          return -1;
+        }
+      })
+  })
+
+  function matchRoute(route, routes) {
+    for (let i = 0; i < routes.length; i++) {
+      const r = routes[i];
+      const match = new Route(r.route).match(route);
+      if (match) {
+        return r;
+      } 
+    }
+    return null;
   }
 
   const getId = memo(async function(name) {
@@ -123,13 +167,17 @@ async function main() {
       const method = req.method.toUpperCase();
       const MAX_ATTEMPTS = 3;
       let attempts = 0;
+      const routes = await getRoutes(key);
       while (attempts++ < MAX_ATTEMPTS) {
-        console.log('fetching', `${method}@${key}/${name.replace(/^\/+/g, '')}`);
-        const id = await getId(`${method}@${key}/${name.replace(/^\/+/g, '')}`);
+        // console.log('fetching', `${method}@${key}/${name.replace(/^\/+/g, '')}`);
+        const match = matchRoute(name, routes);
+        var route = new Route(match.route);
+        const params = route.match(name) || {}
+        // const id = await getId(`${method}@${key}/${name.replace(/^\/+/g, '')}`);
         const ipAddress = getRandomNode();
         try {
           await request(`http://${ipAddress}/status`);
-          res.redirect(307, `http://${ipAddress}/snippits/${id}?${querystring.stringify(req.query)}`);
+          res.redirect(307, `http://${ipAddress}/snippits/${match.id}?_params=${encodeURIComponent(JSON.stringify(params))}&${querystring.stringify(req.query)}`);
           break;
         } catch (err) {
           console.warn('1', err);
@@ -138,8 +186,7 @@ async function main() {
         }
       }
       if (attempts >= MAX_ATTEMPTS) {
-        console.warn('3', err);
-        res.status(500).send(err.message);
+        res.status(500).send('something is seriously wrong with connecting to the workers');
       }
     } catch (err) {
       console.warn('2', err);

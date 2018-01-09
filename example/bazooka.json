@@ -1,6 +1,8 @@
 {
   "key": "d8bD20gdKdsajg",
   "endpoints": {
-    "GET@/v0/users": "src/users.index"
+    "GET@/v0/users": "src/users.index",
+    "POST@/v0/users": "src/users.create",
+    "PUT@/v0/users/:id": "src/users.update"
   }
 }
