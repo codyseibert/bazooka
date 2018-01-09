@@ -139,11 +139,11 @@ async function main() {
       })
   })
 
-  function matchRoute(route, routes) {
+  function matchRoute(route, method, routes) {
     for (let i = 0; i < routes.length; i++) {
       const r = routes[i];
       const match = new Route(r.route).match(route);
-      if (match) {
+      if (r.method === method && match) {
         return r;
       } 
     }
@@ -170,7 +170,11 @@ async function main() {
       const routes = await getRoutes(key);
       while (attempts++ < MAX_ATTEMPTS) {
         // console.log('fetching', `${method}@${key}/${name.replace(/^\/+/g, '')}`);
-        const match = matchRoute(name, routes);
+        const match = matchRoute(name, method, routes);
+        if (!match) {
+          res.status(400).send('endpoint does not exist');
+          return;
+        }
         var route = new Route(match.route);
         const params = route.match(name) || {}
         // const id = await getId(`${method}@${key}/${name.replace(/^\/+/g, '')}`);
