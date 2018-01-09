@@ -100,7 +100,7 @@ function getModules(id) {
 }
 
 let limit = {};
-const REQUESTS_PER_MIN = 10;
+const REQUESTS_PER_MIN = 100000;
 setInterval(function() {
   limit = {};
 }, 60000);
@@ -109,12 +109,12 @@ app.get('/status', function(req, res) {
   res.status(200).send('success');
 })
 
-console.log('momo');
+const seen = {};
+
 app.all('/snippits/:id', async function(req, res){
   const id = req.params.id;
-  console.log('yup');
-  console.log('req.query', req.query);
-  
+  console.log('running', id);
+
   if (limit[id] !== undefined) {
     limit[id]--;
   } else {
@@ -126,12 +126,13 @@ app.all('/snippits/:id', async function(req, res){
     return;
   }
 
-  console.log('hh');
-  const source = await s3.getObjectAsync({
-    Bucket: 'bazooka',
-    Key: id
-  })
-  console.log('here', source);
+  let source;
+  if (!seen[id]) {
+    source = await s3.getObjectAsync({
+      Bucket: 'bazooka',
+      Key: id
+    })
+  }
 
   function run() {
     let realError = null;
@@ -165,13 +166,10 @@ app.all('/snippits/:id', async function(req, res){
       params: params,
       query: req.query
     }).replace(/"/g, '\\\"');
-    console.log('request', request);
     const runner = cp.exec(`node snippits/${id}/index.js "${request}"`, {
       maxBuffer: 1024 * 1024 * 1
       // uid: process.env.UID || 1000
     }, (err, stdout, stderr) => {
-      console.log('stdout', stdout);
-      console.log('err', err);
       clearInterval(interval);
       clearTimeout(timeout);
 
@@ -196,14 +194,19 @@ app.all('/snippits/:id', async function(req, res){
       }
     })
   }
-
-  console.log('id', id);
-  fs.mkdir('snippits', () => {
-    fs.mkdir(`snippits/${id}`, () => {
-      fs.writeFileSync(`snippits/${id}/index.js`, source.Body);
-      run();
+  
+  if (!seen[id]) {
+    fs.mkdir('snippits', () => {
+      fs.mkdir(`snippits/${id}`, () => {
+        fs.writeFile(`snippits/${id}/index.js`, source.Body, function(err) {
+          run();
+          seen[id] = true;
+        });
+      })
     })
-  })
+  } else {
+    run();
+  }
 });
 
 

@@ -8,6 +8,7 @@ var AWS = require('aws-sdk');
 var Bluebird = require('bluebird');
 var uuid = require('node-uuid');
 var request = Bluebird.promisify(require('request'));
+var normalRequest = require('request');
 var querystring = require('querystring');
 var Route = require('route-parser');
 
@@ -103,8 +104,7 @@ async function main() {
     const memo = {};
     return function(input) {
       // temp hack until activemq clear cache implemented
-      return fn(input)
-
+      // return fn(input)
       if (!memo[input]) {
         memo[input] = fn(input) 
       } 
@@ -179,21 +179,33 @@ async function main() {
         const params = route.match(name) || {}
         // const id = await getId(`${method}@${key}/${name.replace(/^\/+/g, '')}`);
         const ipAddress = getRandomNode();
+        if (!ipAddress) {
+          throw new Error('ran out of worker ip addresses to forward request to');
+        }
         try {
           await request(`http://${ipAddress}/status`);
-          res.redirect(307, `http://${ipAddress}/snippits/${match.id}?_params=${encodeURIComponent(JSON.stringify(params))}&${querystring.stringify(req.query)}`);
+          console.log('running', `http://${ipAddress}/snippits/${match.id}?_params=${encodeURIComponent(JSON.stringify(params))}&${querystring.stringify(req.query)}`);
+          const response = await request({
+            url: `http://${ipAddress}/snippits/${match.id}?_params=${encodeURIComponent(JSON.stringify(params))}&${querystring.stringify(req.query)}`,
+            method: method,
+            json: req.body
+          })
+          // normalRequest({
+          //   url: `http://${ipAddress}/snippits/${match.id}?_params=${encodeURIComponent(JSON.stringify(params))}&${querystring.stringify(req.query)}`,
+          //   method: method,
+          //   json: req.body
+          // }).pipe(res)
+          res.status(200).send(response.body);
+          // res.redirect(307, `http://${ipAddress}/snippits/${match.id}?_params=${encodeURIComponent(JSON.stringify(params))}&${querystring.stringify(req.query)}`);
           break;
         } catch (err) {
-          console.warn('1', err);
-          console.log('removing ip address', ipAddress);
           removeNode(ipAddress);
         }
       }
       if (attempts >= MAX_ATTEMPTS) {
-        res.status(500).send('something is seriously wrong with connecting to the workers');
+        res.status(500).send('Could not find any workers to process this request.  Bazooka.IO is down');
       }
     } catch (err) {
-      console.warn('2', err);
       res.status(500).send(err.message);
     }
   });
