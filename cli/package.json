@@ -1,0 +1,23 @@
+{
+  "name": "cli",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "bazooka": "bin/cli.js"
+  },
+  "preferGlobal": "true",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bluebird": "^3.5.1",
+    "browserify": "^15.0.0",
+    "mkdirp": "^0.5.1",
+    "randomstring": "^1.1.5",
+    "request": "^2.83.0"
+  }
+}

@@ -105,7 +105,7 @@ module.exports = function (body, cb) {
   },
   computed: {
     example () {
-      return `curl -XPOST -H "Content-type: application/json" -d '{"length": 8}' '${this.endpoint}'`
+      return `curl -L -XPOST -H "Content-type: application/json" -d '{"length": 8}' '${this.endpoint}'`
     }
   },
   methods: {

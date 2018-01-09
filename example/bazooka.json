@@ -1,0 +1,6 @@
+{
+  "key": "d8bD20gdKdsajg",
+  "endpoints": {
+    "GET@/v0/users": "src/users.index"
+  }
+}

@@ -5,9 +5,50 @@ var cp = require('child_process');
 var bodyParser = require('body-parser');
 var usage = require('usage');
 var cors = require('cors');
+var request = require('request');
+var AWS = require('aws-sdk');
+var Bluebird = require('bluebird');
+var uuid = require('node-uuid');
+var cp = require('child_process');
+
+const ip = cp.execSync(`dig TXT +short o-o.myaddr.l.google.com @ns1.google.com | awk -F'"' '{ print $2}'`).toString().replace('\n', '');
+
+let conn;
+let ch;
+async function setupRabbitMqConnection() {
+  conn = await require('amqplib').connect(process.env.RABBIT || 'amqp://localhost');
+  ch = await conn.createChannel();
+}
+setupRabbitMqConnection();
+
+async function publishHeartbeat() {
+  try {
+    await ch.assertExchange('heartbeat', 'fanout', {durable: false})
+    await ch.publish('heartbeat', '', Buffer.from(JSON.stringify({
+      ip: `${process.env.IP || ip}:${process.env.PORT || 10001}`
+    })));
+  } catch (err) {
+    console.warn(err);
+  }
+}
+setInterval(publishHeartbeat, 5000);
+
+const docClient = Bluebird.promisifyAll(
+  new AWS.DynamoDB.DocumentClient({
+    region: 'us-east-1',
+    endpoint: 'dynamodb.us-east-1.amazonaws.com'
+  })
+);
+
+const s3 = Bluebird.promisifyAll(
+  new AWS.S3({
+    region: 'us-east-1'
+  })
+);
 
 app.use(cors());
 app.use(bodyParser.json());
+
 
 function getModules(id) {
   const file = fs.readFileSync(`snippits/${id}/index.js`, 'utf-8');
@@ -65,11 +106,16 @@ setInterval(function() {
   limit = {};
 }, 60000);
 
-app.post('/snippits/:id', function(req, res){
+app.get('/status', function(req, res) {
+  res.status(200).send('success');
+})
+
+console.log('momo');
+app.all('/snippits/:id', async function(req, res){
   const id = req.params.id;
-  const payload = JSON.stringify(req.body).replace(/"/g, '\\\"');
+  console.log('yup');
+  console.log('req.query', req.query);
   
-  console.log(limit);
   if (limit[id] !== undefined) {
     limit[id]--;
   } else {
@@ -80,6 +126,13 @@ app.post('/snippits/:id', function(req, res){
     res.status(500).send(`you have hit your endpoint limit of ${REQUESTS_PER_MIN} requests per minute`);
     return;
   }
+
+  console.log('hh');
+  const source = await s3.getObjectAsync({
+    Bucket: 'bazooka',
+    Key: id
+  })
+  console.log('here', source);
 
   function run() {
     let realError = null;
@@ -104,10 +157,18 @@ app.post('/snippits/:id', function(req, res){
       runner.kill();
     }, TIME_LIMIT);
     
-    const runner = cp.exec(`node src/runner.js ${id} "${payload}"`, {
-      maxBuffer: 1024 * 1024 * 1,
-      uid: process.env.UID || 1001
+    const request = JSON.stringify({
+      body: req.body,
+      params: req.params,
+      query: req.query
+    }).replace(/"/g, '\\\"');
+    console.log('request', request);
+    const runner = cp.exec(`node snippits/${id}/index.js "${request}"`, {
+      maxBuffer: 1024 * 1024 * 1
+      // uid: process.env.UID || 1000
     }, (err, stdout, stderr) => {
+      console.log('stdout', stdout);
+      console.log('err', err);
       clearInterval(interval);
       clearTimeout(timeout);
 
@@ -133,26 +194,14 @@ app.post('/snippits/:id', function(req, res){
     })
   }
 
-  run();
-});
-
-app.post('/snippits', function(req, res){
-  const id = uuid.v4();
-  const snippit = req.body.snippit;
+  console.log('id', id);
   fs.mkdir('snippits', () => {
     fs.mkdir(`snippits/${id}`, () => {
-      fs.writeFile(`snippits/${id}/index.js`, snippit, (err, n) => {
-        const modules = getModules(id);
-        cp.exec(`npm install --prefix=snippits/${id} ${modules.join(' ')}`, function(err) {
-          if (err) {
-            res.status(500).send('error creating your bazooka function');
-          } else {
-            res.send(`${id}`);
-          }
-        });
-      });
+      fs.writeFileSync(`snippits/${id}/index.js`, source.Body);
+      run();
     })
   })
 });
 
-app.listen(8080);
+
+app.listen(process.env.PORT || 10001);
