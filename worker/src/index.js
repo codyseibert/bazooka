@@ -166,66 +166,65 @@ app.all('/snippits/:id', async function(req, res){
       params: params,
       query: req.query
     }).replace(/"/g, '\\\"');
-    console.time(id);
-    const runner = cp.spawn('node', [`snippits/${id}/index.js`, `"${request}"`])
-    let out = "";
-    runner.stdout.on('data', (data) => {
-      out += data
-      console.log(data.toString());
+    // console.time(id);
+    // const runner = cp.spawn('node', [`snippits/${id}/index.js`, `"${request}"`])
+    // let out = "";
+    // runner.stdout.on('data', (data) => {
+    //   out += data
+    //   console.log(data.toString());
 
-      const reg = /output=\|(.*)\|/;
-      const match = reg.exec(out);
-      if (match) {
-        let payload = JSON.parse(match[1]);
-        if (typeof payload === "number") {
-          payload += "";
-        }
-        console.timeEnd(id);
-        res.status(200).send(payload);
-      }
-    });
+    //   const reg = /output=\|(.*)\|/;
+    //   const match = reg.exec(out);
+    //   if (match) {
+    //     let payload = JSON.parse(match[1]);
+    //     if (typeof payload === "number") {
+    //       payload += "";
+    //     }
+    //     console.timeEnd(id);
+    //     res.status(200).send(payload);
+    //   }
+    // });
     
-    runner.stderr.on('data', (data) => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-      runner.kill();
-      res.status(500).send(data);
-    });
-    
-    runner.on('close', (code) => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    });
-
-    // const runner = cp.exec(`node snippits/${id}/index.js "${request}"`, {
-    //   maxBuffer: 1024 * 1024 * 1
-    //   // uid: process.env.UID || 1000
-    // }, (err, stdout, stderr) => {
-    //   console.timeEnd(id);
-    //   console.log(stdout);
+    // runner.stderr.on('data', (data) => {
     //   clearInterval(interval);
     //   clearTimeout(timeout);
+    //   runner.kill();
+    //   res.status(500).send(data);
+    // });
+    
+    // runner.on('close', (code) => {
+    //   clearInterval(interval);
+    //   clearTimeout(timeout);
+    // });
 
-    //   try {
-    //     if (err) {
-    //       res.status(500).send(realError || err.message);
-    //     } else {
-    //       const reg = /output=\|(.*)\|/;
-    //       const match = reg.exec(stdout);
-    //       let payload = JSON.parse(match[1]);
-    //       if (typeof payload === "number") {
-    //         payload += "";
-    //       }
-    //       if (match) {
-    //         res.status(200).send(payload);
-    //       } else {
-    //         res.status(500).send('error: snippit returned no data');
-    //       }
-    //     }
-    //   } catch (err) {
-    //     res.status(500).send(err.message);
-    //   }
-    // })
+    const runner = cp.exec(`node snippits/${id}/index.js "${request}"`, {
+      maxBuffer: 1024 * 1024 * 1
+      // uid: process.env.UID || 1000
+    }, (err, stdout, stderr) => {
+      console.log(stdout);
+      clearInterval(interval);
+      clearTimeout(timeout);
+
+      try {
+        if (err) {
+          res.status(500).send(realError || err.message);
+        } else {
+          const reg = /output=\|(.*)\|/;
+          const match = reg.exec(stdout);
+          let payload = JSON.parse(match[1]);
+          if (typeof payload === "number") {
+            payload += "";
+          }
+          if (match) {
+            res.status(200).send(payload);
+          } else {
+            res.status(500).send('error: snippit returned no data');
+          }
+        }
+      } catch (err) {
+        res.status(500).send(err.message);
+      }
+    })
   }
   
   if (!seen[id]) {
