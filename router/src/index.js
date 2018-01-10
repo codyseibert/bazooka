@@ -31,7 +31,9 @@ async function main() {
   );
 
   app.use(cors());
-  app.use(bodyParser.json());
+  app.use(bodyParser.json({
+    limit: '5mb'
+  }));
 
   const nodes = [];
 
@@ -104,7 +106,7 @@ async function main() {
     const memo = {};
     return function(input) {
       // temp hack until activemq clear cache implemented
-      // return fn(input)
+      return fn(input)
       if (!memo[input]) {
         memo[input] = fn(input) 
       } 
@@ -195,7 +197,11 @@ async function main() {
           //   method: method,
           //   json: req.body
           // }).pipe(res)
-          res.status(200).send(response.body);
+          if (typeof response.body === 'number') {
+            res.status(200).send(`${response.body}`);
+          } else {
+            res.status(200).send(response.body);
+          }
           // res.redirect(307, `http://${ipAddress}/snippits/${match.id}?_params=${encodeURIComponent(JSON.stringify(params))}&${querystring.stringify(req.query)}`);
           break;
         } catch (err) {
