@@ -12,6 +12,7 @@ var normalRequest = require('request');
 var querystring = require('querystring');
 var Route = require('route-parser');
 
+let curNode = 0;
 
 async function main() {
   const conn = await require('amqplib').connect(process.env.RABBIT || 'amqp://localhost');
@@ -63,6 +64,11 @@ async function main() {
     }
     const randomIndex = parseInt(Math.random() * arr.length);
     return arr[randomIndex];
+  }
+
+  function getNextNode() {
+    curNode = (curNode + 1) % nodes.length;
+    return nodes[curNode]
   }
 
   function removeNode(node) {
@@ -180,7 +186,7 @@ async function main() {
         var route = new Route(match.route);
         const params = route.match(name) || {}
         // const id = await getId(`${method}@${key}/${name.replace(/^\/+/g, '')}`);
-        const ipAddress = getRandomNode();
+        const ipAddress = getNextNode();
         if (!ipAddress) {
           throw new Error('ran out of worker ip addresses to forward request to');
         }
