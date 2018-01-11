@@ -41,3 +41,12 @@
 [Tue Jan 09 2018 16:04:00 GMT-0500 (EST)] INFO   95%      122 ms
 [Tue Jan 09 2018 16:04:00 GMT-0500 (EST)] INFO   99%      176 ms
 [Tue Jan 09 2018 16:04:00 GMT-0500 (EST)] INFO  100%      176 ms (longest request)
+
+
+loadtest -n 50 --rps 5 http://localhost:10000/snippits/d8bD20gdKdsajg/count
+[Wed Jan 10 2018 05:46:58 GMT+0000 (UTC)] INFO Percentage of the requests served within a certain time
+[Wed Jan 10 2018 05:46:58 GMT+0000 (UTC)] INFO   50%      101 ms
+[Wed Jan 10 2018 05:46:58 GMT+0000 (UTC)] INFO   90%      112 ms
+[Wed Jan 10 2018 05:46:58 GMT+0000 (UTC)] INFO   95%      117 ms
+[Wed Jan 10 2018 05:46:58 GMT+0000 (UTC)] INFO   99%      155 ms
+[Wed Jan 10 2018 05:46:58 GMT+0000 (UTC)] INFO  100%      155 ms (longest request)

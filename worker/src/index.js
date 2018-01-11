@@ -201,13 +201,17 @@ app.all('/snippits/:id', async function(req, res){
       maxBuffer: 1024 * 1024 * 1
       // uid: process.env.UID || 1000
     }, (err, stdout, stderr) => {
-      console.log(stdout);
+      console.log('stdout', stdout);
+      console.log('stderr', stderr);
+      console.log('err', err);
       clearInterval(interval);
       clearTimeout(timeout);
 
       try {
         if (err) {
           res.status(500).send(realError || err.message);
+        } else if (stderr) {
+          res.status(500).send(stderr);
         } else {
           const reg = /output=\|(.*)\|/;
           const match = reg.exec(stdout);

@@ -1,6 +1,11 @@
 {
   "key": "d8bD20gdKdsajg",
   "endpoints": {
-    "GET@/count": "src/counter.value"
+    "POST@/person": "src/person.create",
+    "GET@/person": "src/person.index",
+    "GET@/persona": "src/person.indexa",
+    "GET@/personb": "src/person.indexb",
+    "GET@/personc": "src/person.indexc",
+    "GET@/persond": "src/person.indexd"
   }
 }

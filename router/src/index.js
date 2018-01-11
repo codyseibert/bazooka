@@ -11,69 +11,92 @@ var request = Bluebird.promisify(require('request'));
 var normalRequest = require('request');
 var querystring = require('querystring');
 var Route = require('route-parser');
+var multer  = require('multer')
+var cp = require('child_process');
+var upload = multer({ dest: 'uploads/' })
+var nodePath = require('path');
+var fs = require('fs');
+var runner = require('./runner');
+var morgan = require('morgan')
 
-let curNode = 0;
+const s3 = Bluebird.promisifyAll(
+  new AWS.S3({
+    region: 'us-east-1'
+  })
+);
+
+const docClient = Bluebird.promisifyAll(
+  new AWS.DynamoDB.DocumentClient({
+    region: 'us-east-1',
+    endpoint: 'dynamodb.us-east-1.amazonaws.com'
+  })
+);
+
 
 async function main() {
   const conn = await require('amqplib').connect(process.env.RABBIT || 'amqp://localhost');
   const ch = await conn.createChannel();
 
-  const s3 = Bluebird.promisifyAll(
-    new AWS.S3({
-      region: 'us-east-1'
-    })
-  );
-
-  const docClient = Bluebird.promisifyAll(
-    new AWS.DynamoDB.DocumentClient({
-      region: 'us-east-1',
-      endpoint: 'dynamodb.us-east-1.amazonaws.com'
-    })
-  );
-
   app.use(cors());
+  app.use(morgan('tiny'));
   app.use(bodyParser.json({
     limit: '5mb'
   }));
 
-  const nodes = [];
+  // try {
+  //   await ch.assertExchange('heartbeat', 'fanout', {durable: false})
+  //   const ok = await ch.assertQueue('', {exclusive: true});
+  //   await ch.bindQueue(ok.queue, 'heartbeat', '');
+  //   await ch.consume(ok.queue, function(msg) {
+  //     if (msg !== null) {
+  //       const heartbeat = JSON.parse(msg.content.toString());
+  //       const ip = heartbeat.ip;
+  //       if (nodes.indexOf(ip) === -1) {
+  //         nodes.push(ip);
+  //       }
+  //       console.log(nodes);
+  //       ch.ack(msg);
+  //     }
+  //   })
+  // } catch (err) {
+  //   console.warn(err);
+  // }
 
-  try {
-    await ch.assertExchange('heartbeat', 'fanout', {durable: false})
-    const ok = await ch.assertQueue('', {exclusive: true});
-    await ch.bindQueue(ok.queue, 'heartbeat', '');
-    await ch.consume(ok.queue, function(msg) {
-      if (msg !== null) {
-        const heartbeat = JSON.parse(msg.content.toString());
-        const ip = heartbeat.ip;
-        if (nodes.indexOf(ip) === -1) {
-          nodes.push(ip);
-        }
-        console.log(nodes);
-        ch.ack(msg);
-      }
-    })
-  } catch (err) {
-    console.warn(err);
-  }
+  app.get('/status', function (req, res) {
+    res.status(200).send('success');
+  });
 
-  function getRandomNode(arr) {
-    arr = arr || nodes;
-    if (!arr.length) {
-      return null;
+  app.post('/upload', upload.single('zip'), async function(req, res) {
+    try {
+      const file = req.file;
+      const path = file.path;
+      const filename = file.filename;
+
+      cp.exec(`unzip -j ${path} bazooka.json -d ${path}_dir`, async function(err, stdout, stderr) {
+        const bazooka = require(nodePath.join(process.cwd(),`${path}_dir/bazooka.json`));
+        const endpoints = bazooka.endpoints;
+        const key = bazooka.key;
+        const data = await Bluebird.promisify(fs.readFile)(file.path)
+
+        await s3.putObjectAsync({
+          Bucket: 'bazooka',
+          Key: key,
+          Body: data,
+        });
+
+        await docClient.putAsync({
+          TableName: 'snippits',
+          Key: {
+            key: key
+          },
+          Item: bazooka
+        });
+        res.status(200).send('success');
+      });
+    } catch (err) {
+      res.status(500).send(err);
     }
-    const randomIndex = parseInt(Math.random() * arr.length);
-    return arr[randomIndex];
-  }
-
-  function getNextNode() {
-    curNode = (curNode + 1) % nodes.length;
-    return nodes[curNode]
-  }
-
-  function removeNode(node) {
-    nodes.splice(nodes.indexOf(node), 1);
-  }
+  });
 
   app.post('/snippits', async function(req, res){
     try {
@@ -111,8 +134,6 @@ async function main() {
   function memo(fn) {
     const memo = {};
     return function(input) {
-      // temp hack until activemq clear cache implemented
-      return fn(input)
       if (!memo[input]) {
         memo[input] = fn(input) 
       } 
@@ -127,12 +148,12 @@ async function main() {
         key: key
       }
     });
-    return Object.keys(record.Item)
+    return Object.keys(record.Item.endpoints)
       .filter(key => key.indexOf('@') !== -1)
       .map(key => ({
         route: key.split('@')[1],
         method: key.split('@')[0],
-        id: record.Item[key]
+        handler: record.Item.endpoints[key]
       }))
       .sort((a, b) => {
         const ia = a.route.indexOf(':');
@@ -150,10 +171,10 @@ async function main() {
   function matchRoute(route, method, routes) {
     for (let i = 0; i < routes.length; i++) {
       const r = routes[i];
-      const match = new Route(r.route).match(route);
+      const match = new Route(r.route.replace(/^\/+/g, '')).match(route);
       if (r.method === method && match) {
         return r;
-      } 
+      }
     }
     return null;
   }
@@ -173,56 +194,37 @@ async function main() {
       const name = req.params.name;
       const key = req.params.key;
       const method = req.method.toUpperCase();
-      const MAX_ATTEMPTS = 3;
-      let attempts = 0;
       const routes = await getRoutes(key);
-      while (attempts++ < MAX_ATTEMPTS) {
-        // console.log('fetching', `${method}@${key}/${name.replace(/^\/+/g, '')}`);
-        const match = matchRoute(name, method, routes);
-        if (!match) {
-          res.status(400).send('endpoint does not exist');
-          return;
-        }
-        var route = new Route(match.route);
-        const params = route.match(name) || {}
-        // const id = await getId(`${method}@${key}/${name.replace(/^\/+/g, '')}`);
-        const ipAddress = getNextNode();
-        if (!ipAddress) {
-          throw new Error('ran out of worker ip addresses to forward request to');
-        }
-        try {
-          await request(`http://${ipAddress}/status`);
-          console.log('running', `http://${ipAddress}/snippits/${match.id}?_params=${encodeURIComponent(JSON.stringify(params))}&${querystring.stringify(req.query)}`);
-          const response = await request({
-            url: `http://${ipAddress}/snippits/${match.id}?_params=${encodeURIComponent(JSON.stringify(params))}&${querystring.stringify(req.query)}`,
-            method: method,
-            json: req.body
-          })
-          // normalRequest({
-          //   url: `http://${ipAddress}/snippits/${match.id}?_params=${encodeURIComponent(JSON.stringify(params))}&${querystring.stringify(req.query)}`,
-          //   method: method,
-          //   json: req.body
-          // }).pipe(res)
-          if (typeof response.body === 'number') {
-            res.status(200).send(`${response.body}`);
-          } else {
-            res.status(200).send(response.body);
-          }
-          // res.redirect(307, `http://${ipAddress}/snippits/${match.id}?_params=${encodeURIComponent(JSON.stringify(params))}&${querystring.stringify(req.query)}`);
-          break;
-        } catch (err) {
-          removeNode(ipAddress);
-        }
+      const match = matchRoute(name, method, routes);
+
+      if (!match) {
+        res.status(400).send('endpoint does not exist');
+        return;
       }
-      if (attempts >= MAX_ATTEMPTS) {
-        res.status(500).send('Could not find any workers to process this request.  Bazooka.IO is down');
-      }
+
+      var route = new Route(match.route);
+      const params = route.match(name) || {}
+
+      const result = await runner(key, match.handler, {
+        query: req.query,
+        params: params,
+        body: req.body
+      }, res);
+    
+      // if (typeof result === 'number') {
+      //   res.status(200).send(`${result}`);
+      // } else {
+      //   res.status(200).send(result);
+      // }
     } catch (err) {
-      res.status(500).send(err.message);
+      console.log('we got an error!', err);
+      res.status(500).send(err);
     }
   });
 
-  app.listen(process.env.PORT || 10000);
+  const port = process.env.PORT || 10000
+  console.log(`starting router on port ${port}`)
+  app.listen(port);
 };
 
 main();

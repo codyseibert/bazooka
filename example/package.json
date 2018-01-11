@@ -11,6 +11,8 @@
   "license": "ISC",
   "dependencies": {
     "bluebird": "^3.5.1",
+    "mongodb": "^3.0.1",
+    "mongoose": "^4.13.9",
     "randomstring": "^1.1.5",
     "request": "^2.83.0",
     "tinyreq": "^3.3.1"

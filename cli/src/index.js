@@ -9,41 +9,58 @@ const mkdirp = Bluebird.promisify(require('mkdirp'));
 
 module.exports = {
   async deploy () {
-    const bazooka = require(path.join(process.cwd(), BAZOOKA_FILE));
-    const endpoints = bazooka.endpoints;
-    for (let key of Object.keys(endpoints)) {
-      const value = endpoints[key];
-      const [method, name] = key.split('@');
-      await mkdirp('./.tmp');
-      const [src, fun] = value.split('.');
-      fs.writeFileSync(path.join(process.cwd(), '.tmp/', 'fun.js'), `
-      const argv = process.argv;
-      const request = JSON.parse(argv[2]);
-      async function main() {
-        const handler = require('../${src}').${fun};
-        const response = await handler(request)
-        console.log('response', response);
-        console.log("output=|" + JSON.stringify(response) + "|");
+    try {
+      cp.execSync(`rm -f bazooka.zip`);
+      cp.execSync(`zip -r bazooka.zip *`);
+      const response = await request({
+        url: 'http://localhost:10000/upload',
+        method: 'post',
+        formData: {
+          zip: fs.createReadStream('bazooka.zip')
+        }
+      });
+      if (response.statusCode !== 200) {
+        throw new Error('failed to upload the bazooka.zip');
       }
-      main();
-      `);
-      const snippit = cp.execSync(`node ${path.join(__dirname, '../node_modules/browserify/bin/cmd.js')} --node ${path.join(process.cwd(), '.tmp/', 'fun.js')}`);
-      try {
-        const response = await request({
-          url: 'http://localhost:10000/snippits',
-          method: 'post',
-          json: {
-            key: bazooka.key,
-            name: name,
-            snippit: snippit.toString(),
-            method: method
-          } 
-        })
-        console.log('Endpoint Id: ', response.body);
-      } catch (err) {
-        console.error(err.message);
-      }
+    } catch (err) {
+      console.log('err', err)
     }
+    
+    // const bazooka = require(path.join(process.cwd(), BAZOOKA_FILE));
+    // const endpoints = bazooka.endpoints;
+    // for (let key of Object.keys(endpoints)) {
+    //   const value = endpoints[key];
+    //   const [method, name] = key.split('@');
+    //   await mkdirp('./.tmp');
+    //   const [src, fun] = value.split('.');
+    //   fs.writeFileSync(path.join(process.cwd(), '.tmp/', 'fun.js'), `
+    //   const argv = process.argv;
+    //   const request = JSON.parse(argv[2]);
+    //   async function main() {
+    //     const handler = require('../${src}').${fun};
+    //     const response = await handler(request)
+    //     console.log('response', response);
+    //     console.log("output=|" + JSON.stringify(response) + "|");
+    //   }
+    //   main();
+    //   `);
+    //   const snippit = cp.execSync(`node ${path.join(__dirname, '../node_modules/browserify/bin/cmd.js')} --node ${path.join(process.cwd(), '.tmp/', 'fun.js')}`);
+    //   try {
+    //     const response = await request({
+    //       url: 'http://localhost:10000/snippits',
+    //       method: 'post',
+    //       json: {
+    //         key: bazooka.key,
+    //         name: name,
+    //         snippit: snippit.toString(),
+    //         method: method
+    //       } 
+    //     })
+    //     console.log('Endpoint Id: ', response.body);
+    //   } catch (err) {
+    //     console.error(err.message);
+    //   }
+    // }
   },
   init () {
     fs.writeFileSync(path.join(process.cwd(), BAZOOKA_FILE), JSON.stringify({
