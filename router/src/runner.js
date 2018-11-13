@@ -12,12 +12,9 @@ var cp = require('child_process');
 var mkdirp = require('mkdirp');
 // const ip = cp.execSync(`dig TXT +short o-o.myaddr.l.google.com @ns1.google.com | awk -F'"' '{ print $2}'`).toString().replace('\n', '');
 
-const s3 = Bluebird.promisifyAll(
-  new AWS.S3({
-    region: 'us-east-1'
-  })
-);
-
+const s3 = new AWS.S3({
+  region: 'us-east-1'
+});
 
 // let limit = {};
 // const REQUESTS_PER_MIN = 100000;
@@ -30,7 +27,7 @@ const sessions = {};
 
 function spawnRunner(key, handler) {
   const runner = cp.spawn('node', ['src/job.js', key, handler]);
-  
+
   let stdout = "";
   runner.stdout.on('data', (data) => {
     stdout += data.toString();
@@ -66,10 +63,10 @@ module.exports = async function (key, handler, parameters, res) {
   if (!fs.existsSync(path.join(process.cwd(), `snippits/${key}`))) {
     // await Bluebird.promisify(mkdirp)(path.join(process.cwd(), `snippits/${key}`));
     mkdirp.sync(path.join(process.cwd(), `snippits/${key}`));
-    const zip = await s3.getObjectAsync({
-      Bucket: 'bazooka',
+    const zip = await s3.getObject({
+      Bucket: 'bazooka-uploads',
       Key: key
-    })
+    }).promise();
 
     const bazookaZipPath = path.join(process.cwd(), `snippits/${key}/bazooka.zip`);
 

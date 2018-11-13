@@ -56,7 +56,7 @@ function getModules(id) {
   let match = reg.exec(file);
   do {
     if (match) {
-      const ignore = [ 
+      const ignore = [
         'assert',
         'async_hooks',
         'buffer',
@@ -87,7 +87,7 @@ function getModules(id) {
         'v8',
         'vm',
         'zlib',
-        'http2' 
+        'http2'
       ]
       const m = match[2]
       if (ignore.indexOf(m) === -1) {
@@ -128,8 +128,8 @@ app.all('/snippits/:id', async function(req, res){
 
   let source;
   if (!seen[id]) {
-    source = await s3.getObjectAsync({
-      Bucket: 'bazooka',
+    source = await s3.getObject({
+      Bucket: 'bazooka-uploads',
       Key: id
     })
   }
@@ -137,7 +137,7 @@ app.all('/snippits/:id', async function(req, res){
   function run() {
     let realError = null;
     const MEM_LIMIT = 100e6;
-    
+
     const interval = setInterval(function() {
       usage.lookup(runner.pid, function(err, result) {
         if (err) return;
@@ -160,7 +160,7 @@ app.all('/snippits/:id', async function(req, res){
     const params = JSON.parse(req.query._params);
     delete req.query._params;
 
-    
+
     const request = JSON.stringify({
       body: req.body,
       params: params,
@@ -184,14 +184,14 @@ app.all('/snippits/:id', async function(req, res){
     //     res.status(200).send(payload);
     //   }
     // });
-    
+
     // runner.stderr.on('data', (data) => {
     //   clearInterval(interval);
     //   clearTimeout(timeout);
     //   runner.kill();
     //   res.status(500).send(data);
     // });
-    
+
     // runner.on('close', (code) => {
     //   clearInterval(interval);
     //   clearTimeout(timeout);
@@ -230,7 +230,7 @@ app.all('/snippits/:id', async function(req, res){
       }
     })
   }
-  
+
   if (!seen[id]) {
     fs.mkdir('snippits', () => {
       fs.mkdir(`snippits/${id}`, () => {
