@@ -1,10 +1,7 @@
 const AWS = require('aws-sdk');
 var Route = require('route-parser');
 var runner = require('../runner');
-const docClient = new AWS.DynamoDB.DocumentClient({
-  region: 'us-east-1',
-  endpoint: 'dynamodb.us-east-1.amazonaws.com'
-})
+const { client: docClient } = require('../dynamo');
 
 function memo(fn) {
   const memo = {};
