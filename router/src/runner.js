@@ -12,9 +12,7 @@ var cp = require('child_process');
 var mkdirp = require('mkdirp');
 // const ip = cp.execSync(`dig TXT +short o-o.myaddr.l.google.com @ns1.google.com | awk -F'"' '{ print $2}'`).toString().replace('\n', '');
 
-const s3 = new AWS.S3({
-  region: 'us-east-1'
-});
+const { s3 } = require('./s3');
 
 // let limit = {};
 // const REQUESTS_PER_MIN = 100000;

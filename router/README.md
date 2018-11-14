@@ -1,3 +1,15 @@
+# Init Setup
+`npm run dynamo`
+`npm run s3`
+`npm run create-bucket`
+`npm run create-table`
+
+# Contribute (If bucket and table already exist)
+`npm run dynamo`
+`npm run s3`
+`npm run dynamo:admin`
+`npm start`
+
 # Performance
 
 `loadtest -n 100 -c 20 http://localhost:10000/snippits/d8bD20gdKdsajg/v0/users`

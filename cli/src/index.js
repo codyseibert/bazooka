@@ -19,13 +19,14 @@ module.exports = {
           zip: fs.createReadStream('bazooka.zip')
         }
       });
+      console.log('deploy completed');
       if (response.statusCode !== 200) {
         throw new Error('failed to upload the bazooka.zip');
       }
     } catch (err) {
       console.log('err', err)
     }
-    
+
     // const bazooka = require(path.join(process.cwd(), BAZOOKA_FILE));
     // const endpoints = bazooka.endpoints;
     // for (let key of Object.keys(endpoints)) {
@@ -54,7 +55,7 @@ module.exports = {
     //         name: name,
     //         snippit: snippit.toString(),
     //         method: method
-    //       } 
+    //       }
     //     })
     //     console.log('Endpoint Id: ', response.body);
     //   } catch (err) {

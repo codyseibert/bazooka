@@ -1,7 +1,11 @@
+let random = Math.random();
+let count = 0;
+
 module.exports = {
   index({query, body, params}) {
-    return [
-      1,2,3,4,5,6,7,8,9
-    ]
+    return {
+      random,
+      count: count++,
+    };
   },
 }

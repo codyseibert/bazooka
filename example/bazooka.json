@@ -1,5 +1,5 @@
 {
-  "key": "d8bD20gdKdsajg",
+  "key": "test4",
   "endpoints": {
     "GET@/person": "src/person.index"
   }

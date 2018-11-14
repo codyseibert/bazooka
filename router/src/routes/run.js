@@ -75,6 +75,8 @@ exports.run = async function(req, res){
       body: req.body
     }, res);
 
+    console.log('result', result);
+
     // if (typeof result === 'number') {
     //   res.status(200).send(`${result}`);
     // } else {
