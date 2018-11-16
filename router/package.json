@@ -5,10 +5,10 @@
   "main": "index.js",
   "scripts": {
     "postinstall": "wget https://s3-us-west-2.amazonaws.com/dynamodb-local/dynamodb_local_latest.zip && unzip -d dynamo dynamodb_local_latest.zip && rm dynamodb_local_latest.zip",
-    "start": "LOCAL=true nodemon -w src src/index.js",
+    "start": "./start.sh",
     "test": "echo \"Error: no test specified\" && exit 1",
     "s3": "s3rver -d s3",
-    "dynamo": "cd dynamo && java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb",
+    "dynamo": "cd dynamo && java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb -inMemory",
     "dynamo:admin": "DYNAMO_ENDPOINT=http://localhost:8000 dynamodb-admin",
     "create-bucket": "curl -X PUT localhost:4568/bazooka-uploads",
     "create-table": "LOCAL=true node src/createDynamoTables.js"
