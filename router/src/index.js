@@ -1,23 +1,23 @@
-const app = require('express')();
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const multer  = require('multer')
-const upload = multer({ dest: 'uploads/' })
-const morgan = require('morgan')
-
-const { updateSnippit } = require('./routes/updateSnippits');
-const { run } = require('./routes/run');
-const { uploadBazooka } = require('./routes/uploadBazooka');
+const app = require("express")();
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const multer = require("multer");
+const upload = multer({ dest: "uploads/" });
+const morgan = require("morgan");
+const { run } = require("./routes/run");
+const { uploadBazooka } = require("./routes/uploadBazooka");
 
 async function main() {
   // const conn = await require('amqplib').connect(process.env.RABBIT || 'amqp://localhost');
   // const ch = await conn.createChannel();
 
   app.use(cors());
-  app.use(morgan('tiny'));
-  app.use(bodyParser.json({
-    limit: '5mb'
-  }));
+  app.use(morgan("tiny"));
+  app.use(
+    bodyParser.json({
+      limit: "5mb"
+    })
+  );
 
   // try {
   //   await ch.assertExchange('heartbeat', 'fanout', {durable: false})
@@ -38,17 +38,15 @@ async function main() {
   //   console.warn(err);
   // }
 
-  app.get('/status', function (req, res) {
-    res.status(200).send('success');
+  app.get("/status", function(req, res) {
+    res.status(200).send("success");
   });
 
-  app.post('/upload', upload.single('zip'), uploadBazooka)
+  app.post("/upload", upload.single("zip"), uploadBazooka);
 
-  app.post('/snippits', updateSnippit);
+  app.all("/snippits/:key/:name(*)", run);
 
-  app.all('/snippits/:key/:name(*)', run);
-
-  app.listen(10000);
-};
+  app.listen(process.env.PORT || 10000);
+}
 
 main();
