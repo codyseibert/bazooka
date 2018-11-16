@@ -6,6 +6,7 @@ const exec = Bluebird.promisify(require("child_process").exec);
 const { s3 } = require("../s3");
 const { client: docClient } = require("../dynamo");
 const { pub } = require("../bus");
+const uuidv4 = require("uuid/v4");
 
 exports.uploadBazooka = async function(req, res) {
   let filePath;
@@ -21,15 +22,14 @@ exports.uploadBazooka = async function(req, res) {
     ));
     const endpoints = bazooka.endpoints;
     const key = bazooka.key;
+    const hash = uuidv4();
 
-    bazooka.pk = key;
-    bazooka.sk = key;
     const data = await Bluebird.promisify(fs.readFile)(file.path);
 
     await s3
       .putObject({
         Bucket: "bazooka-uploads",
-        Key: key,
+        Key: hash,
         Body: data
       })
       .promise();
@@ -37,7 +37,10 @@ exports.uploadBazooka = async function(req, res) {
     await docClient
       .put({
         TableName: "bazooka",
-        Item: bazooka
+        Item: {
+          ...bazooka,
+          hash
+        }
       })
       .promise();
 

@@ -31,7 +31,8 @@
     "redis": "^2.8.0",
     "request": "^2.83.0",
     "route-parser": "0.0.5",
-    "usage": "^0.7.1"
+    "usage": "^0.7.1",
+    "uuid": "^3.3.2"
   },
   "devDependencies": {
     "dynamodb-admin": "^3.0.2",
