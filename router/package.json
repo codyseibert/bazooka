@@ -6,7 +6,7 @@
   "scripts": {
     "postinstall": "wget https://s3-us-west-2.amazonaws.com/dynamodb-local/dynamodb_local_latest.zip && unzip -d dynamo dynamodb_local_latest.zip && rm dynamodb_local_latest.zip",
     "start": "./start.sh",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "TEST=true jest --detectOpenHandles src/**/*.test.js",
     "s3": "s3rver -d s3",
     "dynamo": "cd dynamo && java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb -inMemory",
     "dynamo:admin": "DYNAMO_ENDPOINT=http://localhost:8000 dynamodb-admin",
@@ -30,12 +30,14 @@
     "rabbit.js": "^0.4.4",
     "redis": "^2.8.0",
     "request": "^2.83.0",
+    "rimraf": "^2.6.2",
     "route-parser": "0.0.5",
     "usage": "^0.7.1",
     "uuid": "^3.3.2"
   },
   "devDependencies": {
     "dynamodb-admin": "^3.0.2",
+    "jest": "^23.6.0",
     "s3rver": "^2.2.6"
   }
 }

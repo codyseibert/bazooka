@@ -5,7 +5,7 @@ const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
 const morgan = require("morgan");
 const { run } = require("./routes/run");
-const { uploadBazooka } = require("./routes/uploadBazooka");
+const { upload } = require("./routes/upload");
 
 async function main() {
   // const conn = await require('amqplib').connect(process.env.RABBIT || 'amqp://localhost');
