@@ -5,88 +5,59 @@ const rimraf = Bluebird.promisify(require("rimraf"));
 const uuidv4 = require("uuid/v4");
 const path = require("path");
 
-// what does this function actually do?
-// - unzips the bazooka.json from out of the bazooka.zip
-// - reads in the bazooka.json from the zip
-// - saves the zip to s3 (using the hash)
-// - saves the bazooka.json to dynamo (including that generated hash)
-// - publishes an event to a redis topic
-// - deletes the .zip file from disk
+const getBazookaJson = async ({ filePath }) => {
+  const prepath = filePath.substring(0, filePath.lastIndexOf("/"));
+  const id = filePath.substring(filePath.lastIndexOf("/") + 1);
+  const name = id;
+  const extractDir = `${filePath}_dir`;
+  await rimraf(extractDir);
+  await exec(`unzip -j ${filePath} bazooka.json -d ${extractDir}`); //, async function(err, stdout, stderr) {
+  const bazookaPath = `${extractDir}/bazooka.json`;
+  const hash = uuidv4();
+  const bazooka = {
+    ...require(bazookaPath),
+    hash
+  };
+  return bazooka;
+};
 
-// how could I test this method does that I want?
-// - verify we make a request to "save" the zip to s3
-// - verify we make a request to "save" the metadata to dynamo with the expected data
-// - verify it tries to publish an event to a topic named 'upload'
-// - verify the code attempts to delete the zip from disk
+const readFile = ({ filePath }) => Bluebird.promisify(fs.readFile)(filePath);
 
-function getBazookaJson({ zipFilePath }) {
-  // extract .json from zip
-  // read it in
-  // add a hash to it
-  // return it
-}
+const saveZip = ({ zip, hash, applicationContext }) =>
+  applicationContext.persistence.store({
+    key: hash,
+    file: zip
+  });
 
-function saveZip({ zipData, metadata }) {
-  // write the zip data to s3 using the hash
-}
+const saveMetadata = ({ metadata, applicationContext }) =>
+  applicationContext.persistence.save({
+    entity: metadata
+  });
 
-function saveMetadata({ metadata }) {
-  // write the metadata to dynamo
-}
-
-function publishUploadEvent({ key }) {
-  // publish the key to the uploads topic
-}
-
-function deleteFile({ filePath }) {
-  // deletes the file
-}
+const publishUploadEvent = ({ key, applicationContext }) =>
+  applicationContext.bus.publish({
+    key: "upload",
+    data: key
+  });
 
 exports.upload = async function({ applicationContext, filePath }) {
-  let error;
-  let extractDir;
-  try {
-    const prepath = filePath.substring(0, filePath.lastIndexOf("/"));
-    const id = filePath.substring(filePath.lastIndexOf("/") + 1);
-    const name = id;
-    extractDir = `${filePath}_dir`;
-    await exec(`unzip -j ${filePath} bazooka.json -d ${extractDir}`); //, async function(err, stdout, stderr) {
-    const bazookaPath = `${extractDir}/bazooka.json`;
-    const hash = uuidv4();
-    const bazooka = {
-      ...require(bazookaPath),
-      hash
-    };
-    const endpoints = bazooka.endpoints;
-    const key = bazooka.key;
+  const bazooka = await getBazookaJson({ filePath });
 
-    const data = await Bluebird.promisify(fs.readFile)(filePath);
+  await saveZip({
+    hash: bazooka.hash,
+    zip: await readFile({ filePath }),
+    applicationContext
+  });
 
-    await applicationContext.persistence.store({
-      key: hash,
-      file: data
-    });
+  await saveMetadata({
+    metadata: bazooka,
+    applicationContext
+  });
 
-    await applicationContext.persistence.save({
-      entity: {
-        ...bazooka,
-        hash
-      }
-    });
+  await publishUploadEvent({
+    key: bazooka.key,
+    applicationContext
+  });
 
-    await applicationContext.bus.publish({
-      key: "upload",
-      data: key
-    });
-
-    return {
-      ...bazooka,
-      hash
-    };
-  } catch (err) {
-    error = err;
-  } finally {
-    if (error) throw error;
-    await rimraf(extractDir);
-  }
+  return bazooka;
 };
