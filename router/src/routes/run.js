@@ -2,16 +2,15 @@ const AWS = require("aws-sdk");
 var Route = require("route-parser");
 var runner = require("../runner");
 const { client: docClient } = require("../dynamo");
-const { sub } = require("../bus");
 
 const metaMemo = {};
 const routeMemo = {};
 
-sub.on("message", function(channel, message) {
-  console.log("decache", message);
-  delete metaMemo[message];
-  delete routeMemo[message];
-});
+// sub.on("message", function(channel, message) {
+//   console.log("decache", message);
+//   delete metaMemo[message];
+//   delete routeMemo[message];
+// });
 
 function memo(fn, memo) {
   return function(input) {

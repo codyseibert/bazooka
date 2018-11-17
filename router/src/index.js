@@ -2,7 +2,7 @@ const app = require("express")();
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const multer = require("multer");
-const upload = multer({ dest: "uploads/" });
+const up = multer({ dest: "uploads/" });
 const morgan = require("morgan");
 const { run } = require("./routes/run");
 const { upload } = require("./routes/upload");
@@ -42,7 +42,7 @@ async function main() {
     res.status(200).send("success");
   });
 
-  app.post("/upload", upload.single("zip"), uploadBazooka);
+  app.post("/upload", up.single("zip"), upload);
 
   app.all("/snippits/:key/:name(*)", run);
 

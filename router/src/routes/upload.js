@@ -1,5 +1,6 @@
 const { upload } = require("../useCases/upload");
 const applicationContext = require("../applicationContext");
+const rimraf = require("rimraf");
 
 exports.upload = async function(req, res) {
   try {
@@ -11,8 +12,6 @@ exports.upload = async function(req, res) {
   } catch (err) {
     res.status(500).send(err);
   } finally {
-    fs.unlink(req.file.path, err => {
-      console.log(err);
-    });
+    rimraf(req.file.path, () => {});
   }
 };

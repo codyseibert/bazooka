@@ -41,6 +41,7 @@ const publishUploadEvent = ({ key, applicationContext }) =>
   });
 
 exports.upload = async function({ applicationContext, filePath }) {
+  console.log("upload");
   const bazooka = await getBazookaJson({ filePath });
 
   await saveZip({
