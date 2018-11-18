@@ -6,11 +6,11 @@ const uuidv4 = require("uuid/v4");
 const path = require("path");
 
 const getBazookaJson = async ({ filePath }) => {
+  filePath = path.resolve(filePath);
   const prepath = filePath.substring(0, filePath.lastIndexOf("/"));
   const id = filePath.substring(filePath.lastIndexOf("/") + 1);
   const name = id;
   const extractDir = `${filePath}_dir`;
-  await rimraf(extractDir);
   await exec(`unzip -j ${filePath} bazooka.json -d ${extractDir}`); //, async function(err, stdout, stderr) {
   const bazookaPath = `${extractDir}/bazooka.json`;
   const hash = uuidv4();
@@ -18,6 +18,7 @@ const getBazookaJson = async ({ filePath }) => {
     ...require(bazookaPath),
     hash
   };
+  await rimraf(extractDir);
   return bazooka;
 };
 

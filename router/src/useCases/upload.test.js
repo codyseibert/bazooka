@@ -1,7 +1,9 @@
+const Bluebird = require("bluebird");
 const { upload } = require("./upload");
 const applicationContext = require("../applicationContext");
 const path = require("path");
 const fs = require("fs");
+const rimraf = Bluebird.promisify(require("rimraf"));
 
 describe("upload", () => {
   const filePath = path.join(__dirname, "../../fixtures/bazooka.zip");
@@ -10,6 +12,8 @@ describe("upload", () => {
   let lastPublishEvent;
 
   beforeAll(async () => {
+    console.log(`${filePath}_dir`);
+    await rimraf(`${filePath}_dir`);
     await applicationContext.bus.subscribe({
       key: "upload",
       cb: event => {
@@ -42,7 +46,7 @@ describe("upload", () => {
   });
 
   it("should delete the extracted folder", () => {
-    const fileExists = fs.existsSync(path.join(filePath, "_dir"));
+    const fileExists = fs.existsSync(`${filePath}_dir`);
     expect(fileExists).toBe(false);
   });
 });
