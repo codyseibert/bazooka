@@ -1,7 +1,6 @@
 const Bluebird = require("bluebird");
 const { upload } = require("../useCases/upload");
 const applicationContext = require("../applicationContext");
-const rimraf = require("rimraf");
 const rimraf = Bluebird.promisify(require("rimraf"));
 
 exports.upload = async function(req, res) {

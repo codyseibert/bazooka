@@ -36,7 +36,7 @@ function spawnRunner(key, handler, hash) {
       const outSession = match[1];
       let payload = JSON.parse(match[2]);
       stdout = stdout.replace(match[0], "");
-      sessions[outSession].status(200).send(payload);
+      sessions[outSession](payload);
       delete sessions[outSession];
     }
   });
@@ -53,40 +53,41 @@ function spawnRunner(key, handler, hash) {
   return runner;
 }
 
-module.exports = async function(key, handler, parameters, res, hash) {
-  const session = uuid.v4();
-  sessions[session] = res;
-  const id = `${key}-${hash}-${handler}`;
+module.exports = async function(key, handler, parameters, hash) {
+  return new Promise(async (resolve, reject) => {
+    const session = uuid.v4();
+    sessions[session] = resolve;
+    const id = `${key}-${hash}-${handler}`;
 
-  if (!fs.existsSync(path.join(process.cwd(), `snippits/${key}-${hash}`))) {
-    // await Bluebird.promisify(mkdirp)(path.join(process.cwd(), `snippits/${key}`));
-    mkdirp.sync(path.join(process.cwd(), `snippits/${key}-${hash}`));
-    const zip = await s3
-      .getObject({
-        Bucket: "bazooka-uploads",
-        Key: hash
-      })
-      .promise();
+    if (!fs.existsSync(path.join(process.cwd(), `snippits/${key}-${hash}`))) {
+      // await Bluebird.promisify(mkdirp)(path.join(process.cwd(), `snippits/${key}`));
+      mkdirp.sync(path.join(process.cwd(), `snippits/${key}-${hash}`));
+      const zip = await s3
+        .getObject({
+          Bucket: "bazooka-uploads",
+          Key: hash
+        })
+        .promise();
 
-    const bazookaZipPath = path.join(
-      process.cwd(),
-      `snippits/${key}-${hash}/bazooka.zip`
-    );
-
-    await Bluebird.promisify(fs.writeFile)(bazookaZipPath, zip.Body);
-    await Bluebird.promisify(cp.exec)(
-      `cd ${path.join(
+      const bazookaZipPath = path.join(
         process.cwd(),
-        `snippits/${key}-${hash}`
-      )} && unzip bazooka.zip`
-    );
-    await Bluebird.promisify(cp.exec)(`rm -f ${bazookaZipPath}`);
-  }
+        `snippits/${key}-${hash}/bazooka.zip`
+      );
 
-  if (!runners[id]) {
-    runners[id] = spawnRunner(key, handler, hash);
-  }
+      await Bluebird.promisify(fs.writeFile)(bazookaZipPath, zip.Body);
+      await Bluebird.promisify(cp.exec)(
+        `cd ${path.join(
+          process.cwd(),
+          `snippits/${key}-${hash}`
+        )} && unzip bazooka.zip`
+      );
+      await Bluebird.promisify(cp.exec)(`rm -f ${bazookaZipPath}`);
+    }
 
-  // console.log('writing', `input=|${session}|${JSON.stringify(parameters)}|`);
-  runners[id].stdin.write(`input=|${session}|${JSON.stringify(parameters)}|`);
+    if (!runners[id]) {
+      runners[id] = spawnRunner(key, handler, hash);
+    }
+
+    runners[id].stdin.write(`input=|${session}|${JSON.stringify(parameters)}|`);
+  });
 };

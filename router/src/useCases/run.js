@@ -71,30 +71,26 @@ function matchRoute(route, method, routes) {
 // determine with "snippit" to run using the path provided
 // spin up a runner and pass the necessary info for it to know which function to run
 // pass in STDIN
-exports.run = async ({ key, path, payload, applicationContext }) => {
-  const method = req.method.toUpperCase();
+exports.run = async ({
+  key,
+  path,
+  payload,
+  method,
+  cb,
+  applicationContext
+}) => {
+  method = method.toUpperCase();
   const meta = await getMetadata(key);
   const routes = await getRoutes(key);
 
   const match = matchRoute(path, method, routes);
 
   if (!match) {
-    res.status(400).send("endpoint does not exist");
-    return;
+    throw new Error("endpoint does not exist");
   }
 
-  var route = new Route(match.route);
+  const route = new Route(match.route);
   const params = route.match(path) || {};
 
-  const result = await runner(
-    key,
-    match.handler,
-    {
-      query: req.query,
-      params: params,
-      body: req.body
-    },
-    res,
-    meta.hash
-  );
+  return runner(key, match.handler, payload, meta.hash);
 };
